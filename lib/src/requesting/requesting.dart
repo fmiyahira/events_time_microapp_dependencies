@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:events_time_microapp_dependencies/src/requesting/http_method.dart';
 import 'package:events_time_microapp_dependencies/src/requesting/response_model.dart';
+import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 abstract class IRequesting {
   Future<RequestingResponse<dynamic>> get(
@@ -31,9 +32,12 @@ abstract class IRequesting {
 
 class Requesting implements IRequesting {
   late String baseUrl;
-  final Dio dio = Dio();
+  late Dio dio;
 
-  Requesting({required this.baseUrl});
+  Requesting({required this.baseUrl}) {
+    dio = Dio();
+    dio.interceptors.add(PrettyDioLogger());
+  }
 
   Future<RequestingResponse<dynamic>> _request(
     String path, {
