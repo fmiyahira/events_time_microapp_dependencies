@@ -1,7 +1,4 @@
-library events_time_microapp_dependencies;
-
-/// A Calculator.
-class Calculator {
-  /// Returns [value] plus 1.
-  int addOne(int value) => value + 1;
-}
+export './src/injector/all.dart';
+export './src/requesting/all.dart';
+export './src/scanner_qrcode/all.dart';
+export './src/subapp/all.dart';

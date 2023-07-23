@@ -2,6 +2,7 @@ name: events_time_microapp_dependencies
 description: A new Flutter package project.
 version: 0.0.1
 homepage:
+publish_to: 'none'
 
 environment:
   sdk: '>=3.0.5 <4.0.0'
@@ -10,6 +11,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  qr_code_scanner: ^1.0.1
+  scanning_effect: ^1.0.4
+  dio: ^5.3.0
+  kiwi: ^4.1.0
+  events_time_microapp_ds:
+    path: "../events_time_microapp_ds"
 
 dev_dependencies:
   flutter_test:
