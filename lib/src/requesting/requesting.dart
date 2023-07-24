@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:events_time_microapp_dependencies/src/requesting/http_method.dart';
 import 'package:events_time_microapp_dependencies/src/requesting/response_model.dart';
+import 'package:flutter/foundation.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 abstract class IRequesting {
@@ -36,7 +37,7 @@ class Requesting implements IRequesting {
 
   Requesting({required this.baseUrl}) {
     dio = Dio();
-    dio.interceptors.add(PrettyDioLogger());
+    if (kDebugMode) dio.interceptors.add(PrettyDioLogger());
   }
 
   Future<RequestingResponse<dynamic>> _request(
