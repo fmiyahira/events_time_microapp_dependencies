@@ -1,16 +1,14 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
-import 'package:events_time_microapp_dependencies/src/injector/injector_interface.dart';
+import 'package:events_time_microapp_dependencies/events_time_microapp_dependencies.dart';
 import 'package:flutter/material.dart';
-
-import '../requesting/all.dart';
 
 class SubAppRegistration {
   String name;
-  Map<String, WidgetBuilder> routes;
+  Map<String, WidgetBuilder>? routes;
 
   SubAppRegistration({
     required this.name,
-    required this.routes,
+    this.routes,
   });
 }
 
@@ -19,5 +17,6 @@ abstract class ISubApp {
   Future<void> initialize({
     required IRequesting requesting,
     required IInjector injector,
+    required ILocalStorage localStorage,
   });
 }

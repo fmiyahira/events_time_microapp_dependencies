@@ -1,10 +1,14 @@
 import 'package:dio/dio.dart';
+import 'package:events_time_microapp_dependencies/events_time_microapp_dependencies.dart';
 import 'package:events_time_microapp_dependencies/src/requesting/http_method.dart';
-import 'package:events_time_microapp_dependencies/src/requesting/response_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 abstract class IRequesting {
+  Future<void> getTokensJWT();
+  Future<void> setTokensJWT(String accessTokenJWT, String refreshTokenJWT);
+  Future<void> deleteTokensJWT();
+
   Future<RequestingResponse<dynamic>> get(
     String path, {
     Map<String, dynamic>? queryParameters,
@@ -32,12 +36,93 @@ abstract class IRequesting {
 }
 
 class Requesting implements IRequesting {
-  late String baseUrl;
-  late Dio dio;
+  String get keyAccessToken => 'tokenJWT';
+  String get keyRefreshToken => 'refreshTokenJWT';
+  String? accessToken;
+  String? refreshToken;
 
-  Requesting({required this.baseUrl}) {
+  late Dio dio;
+  final String baseUrl;
+  final ILocalStorage localStorage;
+
+  Requesting({required this.baseUrl, required this.localStorage}) {
     dio = Dio();
+    getTokensJWT();
     if (kDebugMode) dio.interceptors.add(PrettyDioLogger());
+
+    dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (
+        RequestOptions options,
+        RequestInterceptorHandler handler,
+      ) {
+        // Adicione o token de acesso às requisições se estiver disponível
+        if (accessToken != null) {
+          options.headers['Authorization'] = 'Bearer $accessToken';
+        }
+        return handler.next(options);
+      },
+      onResponse: (
+        Response<dynamic> response,
+        ResponseInterceptorHandler handler,
+      ) {
+        // if (response.statusCode == 401) {
+        //   return _refreshTokenAndRetry(response.requestOptions, handler);
+        // }
+        return handler.next(response);
+      },
+    ));
+  }
+
+  // Future<void> _refreshTokenAndRetry(
+  //   RequestOptions requestOptions,
+  //   ResponseInterceptorHandler handler,
+  // ) async {
+  //   try {
+  //     final response = await dio.post('$baseUrl/refresh_token', data: {
+  //       'refresh_token': refreshToken,
+  //     });
+
+  //     final data = response.data;
+
+  //     if (data.containsKey('access_token')) {
+  //       accessToken = data['access_token'];
+  //       // Atualize o cabeçalho da requisição com o novo access token
+  //       requestOptions.headers['Authorization'] = 'Bearer $accessToken';
+  //       // Repita a requisição original com o novo access token
+
+  //       return handler.resolve(await dio.fetch(requestOptions));
+  //     } else {
+  //       // TODO: logout user
+  //     }
+  //   } catch (error) {
+  //     // TODO: logout user
+  //   }
+  // }
+
+  @override
+  Future<void> getTokensJWT() async {
+    accessToken = await localStorage.getString(keyAccessToken);
+    refreshToken = await localStorage.getString(keyRefreshToken);
+  }
+
+  @override
+  Future<void> setTokensJWT(
+    String accessTokenJWT,
+    String refreshTokenJWT,
+  ) async {
+    accessToken = accessTokenJWT;
+    refreshToken = refreshTokenJWT;
+
+    await localStorage.setString(keyAccessToken, accessTokenJWT);
+    await localStorage.setString(keyRefreshToken, refreshTokenJWT);
+  }
+
+  @override
+  Future<void> deleteTokensJWT() async {
+    accessToken = null;
+    refreshToken = null;
+    await localStorage.delete(keyAccessToken);
+    await localStorage.delete(keyRefreshToken);
   }
 
   Future<RequestingResponse<dynamic>> _request(
