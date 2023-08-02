@@ -48,7 +48,7 @@ class ScannerQRCode {
       child: ScanningEffect(
         scanningColor: DSColors.primary.light,
         borderLineColor: DSColors.primary.base,
-        delay: const Duration(seconds: 1),
+        delay: Duration.zero,
         duration: const Duration(seconds: 2),
         child: QRView(
           key: qrKey,
@@ -67,6 +67,7 @@ class ScannerQRCode {
   ) {
     _controller = newControlller;
     _controller!.scannedDataStream.listen((Barcode barcode) {
+      _controller!.dispose();
       pauseCamera();
       onListen(barcode);
     });
