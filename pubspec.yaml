@@ -18,6 +18,8 @@ dependencies:
   kiwi: ^4.1.0
   path_provider: ^2.0.15
   sembast: ^3.5.0+1
+  brasil_fields: 1.13.1 
+  email_validator: ^2.1.17
   events_time_microapp_ds:
     path: "../events_time_microapp_ds"
 
