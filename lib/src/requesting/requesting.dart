@@ -61,15 +61,15 @@ class Requesting implements IRequesting {
         }
         return handler.next(options);
       },
-      onResponse: (
-        Response<dynamic> response,
-        ResponseInterceptorHandler handler,
-      ) {
-        // if (response.statusCode == 401) {
-        //   return _refreshTokenAndRetry(response.requestOptions, handler);
-        // }
-        return handler.next(response);
-      },
+      // onResponse: (
+      //   Response<dynamic> response,
+      //   ResponseInterceptorHandler handler,
+      // ) {
+      //   // if (response.statusCode == 401) {
+      //   //   return _refreshTokenAndRetry(response.requestOptions, handler);
+      //   // }
+      //   return handler.next(response);
+      // },
     ));
   }
 
