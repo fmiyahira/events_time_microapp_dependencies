@@ -6,6 +6,7 @@ import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 abstract class IRequesting {
   Future<void> getTokensJWT();
+  bool get hasTokensJWT;
   Future<void> setTokensJWT(String accessTokenJWT, String refreshTokenJWT);
   Future<void> deleteTokensJWT();
 
@@ -116,6 +117,10 @@ class Requesting implements IRequesting {
     await localStorage.setString(keyAccessToken, accessTokenJWT);
     await localStorage.setString(keyRefreshToken, refreshTokenJWT);
   }
+
+  @override
+  bool get hasTokensJWT => accessToken?.isNotEmpty ?? false;
+  //  && (refreshToken?.isNotEmpty ?? false)
 
   @override
   Future<void> deleteTokensJWT() async {
