@@ -18,5 +18,6 @@ abstract class ISubApp {
     required IRequesting requesting,
     required IInjector injector,
     required ILocalStorage localStorage,
+    required GlobalKey<NavigatorState> mainNavigatorKey,
   });
 }
