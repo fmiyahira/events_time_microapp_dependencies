@@ -18,8 +18,6 @@ dependencies:
   sembast: ^3.5.0+1
   brasil_fields: 1.13.1 
   email_validator: ^2.1.17
-  events_time_microapp_ds:
-    path: "../events_time_microapp_ds"
 
 dev_dependencies:
   flutter_test:

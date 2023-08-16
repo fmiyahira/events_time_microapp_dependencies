@@ -19,5 +19,6 @@ abstract class ISubApp {
     required IInjector injector,
     required ILocalStorage localStorage,
     required GlobalKey<NavigatorState> mainNavigatorKey,
+    required Map<String, ValueNotifier<dynamic>> messengers,
   });
 }
