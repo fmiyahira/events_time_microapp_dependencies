@@ -43,14 +43,12 @@ class Requesting implements IRequesting {
   late Dio dio;
   late MicroappHub hub;
   final String baseUrl;
-  final ILocalStorage localStorage;
   final Map<String, ValueNotifier<dynamic>> messengers;
 
   int refreshCountsAttempts = 0;
 
   Requesting({
     required this.baseUrl,
-    required this.localStorage,
     required this.messengers,
   }) {
     dio = Dio();
