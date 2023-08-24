@@ -1,15 +1,15 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:events_time_microapp_dependencies/events_time_microapp_dependencies.dart';
 import 'package:events_time_microapp_dependencies/src/requesting/http_method.dart';
+import 'package:events_time_microapp_hub/domain/models/all.dart';
+import 'package:events_time_microapp_hub/microapp/hub_states.dart';
+import 'package:events_time_microapp_hub/microapp/microapp_hub.dart';
 import 'package:flutter/foundation.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 abstract class IRequesting {
-  Future<void> getTokensJWT();
-  bool get hasTokensJWT;
-  Future<void> setTokensJWT(String accessTokenJWT, String refreshTokenJWT);
-  Future<void> deleteTokensJWT();
-
   Future<RequestingResponse<dynamic>> get(
     String path, {
     Map<String, dynamic>? queryParameters,
@@ -37,19 +37,47 @@ abstract class IRequesting {
 }
 
 class Requesting implements IRequesting {
-  String get keyAccessToken => 'tokenJWT';
-  String get keyRefreshToken => 'refreshTokenJWT';
   String? accessToken;
   String? refreshToken;
 
   late Dio dio;
+  late MicroappHub hub;
   final String baseUrl;
   final ILocalStorage localStorage;
+  final Map<String, ValueNotifier<dynamic>> messengers;
 
-  Requesting({required this.baseUrl, required this.localStorage}) {
+  int refreshCountsAttempts = 0;
+
+  Requesting({
+    required this.baseUrl,
+    required this.localStorage,
+    required this.messengers,
+  }) {
     dio = Dio();
-    getTokensJWT();
+    hub = messengers['hub']! as MicroappHub;
     if (kDebugMode) dio.interceptors.add(PrettyDioLogger());
+
+    hub.addListener(() {
+      if (hub.value is SentJWTTokensHubState ||
+          hub.value is SuccessTokensRenewingHubState) {
+        final JWTTokensHubModel varJWTTokensHubModel =
+            (hub.value is SentJWTTokensHubState
+                    ? hub.value as SentJWTTokensHubState
+                    : hub.value as SuccessTokensRenewingHubState)
+                .payload as JWTTokensHubModel;
+
+        accessToken = varJWTTokensHubModel.accessToken;
+        refreshToken = varJWTTokensHubModel.refreshToken;
+        return;
+      }
+
+      if (hub.value is LogoutHubState ||
+          hub.value is ErrorTokensRenewingHubState) {
+        accessToken = null;
+        refreshToken = null;
+        return;
+      }
+    });
 
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (
@@ -62,72 +90,62 @@ class Requesting implements IRequesting {
         }
         return handler.next(options);
       },
-      // onResponse: (
-      //   Response<dynamic> response,
-      //   ResponseInterceptorHandler handler,
-      // ) {
-      //   // if (response.statusCode == 401) {
-      //   //   return _refreshTokenAndRetry(response.requestOptions, handler);
-      //   // }
-      //   return handler.next(response);
-      // },
+      onError: (DioException exception, ErrorInterceptorHandler handler) {
+        if (exception.response != null &&
+            exception.response!.statusCode == 401 &&
+            refreshCountsAttempts == 0) {
+          refreshCountsAttempts += 1;
+          _refreshTokenAndRetry(exception.response!.requestOptions, handler);
+          return;
+        }
+
+        refreshCountsAttempts = 0;
+        return handler.next(exception);
+      },
     ));
   }
 
-  // Future<void> _refreshTokenAndRetry(
-  //   RequestOptions requestOptions,
-  //   ResponseInterceptorHandler handler,
-  // ) async {
-  //   try {
-  //     final response = await dio.post('$baseUrl/refresh_token', data: {
-  //       'refresh_token': refreshToken,
-  //     });
+  Future<bool> _isSuccessTokensRenewing() async {
+    hub.send(AccessTokenExpiredHubState(refreshToken));
 
-  //     final data = response.data;
+    final Completer<bool> completer = Completer<bool>();
+    final Timer timer = Timer(const Duration(seconds: 5), () {
+      completer.complete(false);
+    });
 
-  //     if (data.containsKey('access_token')) {
-  //       accessToken = data['access_token'];
-  //       // Atualize o cabeçalho da requisição com o novo access token
-  //       requestOptions.headers['Authorization'] = 'Bearer $accessToken';
-  //       // Repita a requisição original com o novo access token
+    final Function() refreshTokenListener;
+    refreshTokenListener = () {
+      if (hub.value is SuccessTokensRenewingHubState) {
+        completer.complete(true);
+        return;
+      }
 
-  //       return handler.resolve(await dio.fetch(requestOptions));
-  //     } else {
-  //       // TODO: logout user
-  //     }
-  //   } catch (error) {
-  //     // TODO: logout user
-  //   }
-  // }
+      if (hub.value is ErrorTokensRenewingHubState) {
+        completer.complete(false);
+        return;
+      }
+    };
 
-  @override
-  Future<void> getTokensJWT() async {
-    accessToken = await localStorage.getString(keyAccessToken);
-    refreshToken = await localStorage.getString(keyRefreshToken);
+    hub.addListener(refreshTokenListener);
+    final bool isSuccess = await completer.future;
+    if (timer.isActive) timer.cancel();
+    hub.removeListener(refreshTokenListener);
+
+    return isSuccess;
   }
 
-  @override
-  Future<void> setTokensJWT(
-    String accessTokenJWT,
-    String refreshTokenJWT,
+  Future<void> _refreshTokenAndRetry(
+    RequestOptions requestOptions,
+    ErrorInterceptorHandler handler,
   ) async {
-    accessToken = accessTokenJWT;
-    refreshToken = refreshTokenJWT;
+    try {
+      if (!await _isSuccessTokensRenewing()) throw Exception();
 
-    await localStorage.setString(keyAccessToken, accessTokenJWT);
-    await localStorage.setString(keyRefreshToken, refreshTokenJWT);
-  }
-
-  @override
-  bool get hasTokensJWT => accessToken?.isNotEmpty ?? false;
-  //  && (refreshToken?.isNotEmpty ?? false)
-
-  @override
-  Future<void> deleteTokensJWT() async {
-    accessToken = null;
-    refreshToken = null;
-    await localStorage.delete(keyAccessToken);
-    await localStorage.delete(keyRefreshToken);
+      requestOptions.headers['Authorization'] = 'Bearer $accessToken';
+      handler.resolve(await dio.fetch(requestOptions));
+    } catch (_) {
+      hub.send(LogoutHubState());
+    }
   }
 
   Future<RequestingResponse<dynamic>> _request(
